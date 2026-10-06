@@ -111,6 +111,20 @@ Baseline、measurement run、protection state には SQLite の transaction / un
 - Optional YOLO segmentation compatibility
 - pytest
 
+## Selected source code
+
+The portfolio includes selected excerpts from the final source archive so the architecture can be reviewed against real implementation rather than documentation alone.
+
+- [Code examples](code-examples/)
+- [AUTO_FUSION detector](code-examples/auto_fusion_detector.py)
+- [Measurement transaction boundary](code-examples/measurement_transaction_excerpt.py)
+- [Change-protection state machine](code-examples/protection_state_machine.py)
+- [Bounded scheduler](code-examples/bounded_scheduler_excerpt.py)
+- [SQLite architecture guards](code-examples/database_guards.sql)
+- [Measurement semantics regression tests](code-examples/measurement_semantics_tests.py)
+
+These are selected real source excerpts. The full application repository is not published because it contains project-specific configuration, UI and operational details that are unnecessary for portfolio review.
+
 ## Evidence included in this portfolio
 
 このリポジトリには、架空の成果値ではなく、開発中に取得したデータの一部を匿名化して掲載しています。
