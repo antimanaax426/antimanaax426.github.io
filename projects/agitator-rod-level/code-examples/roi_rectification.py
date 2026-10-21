@@ -1,6 +1,6 @@
 """ROI ordering and perspective rectification of the shaft.
 
-Excerpt from geometry.py (V1.6.3). Function bodies are copied verbatim from the source;
+Excerpt from geometry.py (V1.6.4). Function bodies are copied verbatim from the source;
 unrelated code (CLI, drawing, batch output) is omitted.
 """
 from __future__ import annotations

@@ -43,9 +43,13 @@ flowchart LR
     C -- yes --> M[10 s rolling median]
     C -- no --> H[hold 10 s]
     M --> OK[status = ok<br/>level %]
-    H --> B{Probe region under rod<br/>clear in >= 70% of window?}
+    H --> W{Lower rod blurred,<br/>nothing white?}
+    W -- yes --> SM[status = submerged]
+    W -- no --> B{Probe region under rod<br/>clear?}
     B -- yes --> BR[status = below_rod<br/>level < 0 %]
-    B -- no --> NS[status = no_surface]
+    B -- no --> FG{Probe and upper rod<br/>washed out?}
+    FG -- yes --> FO[status = fog]
+    FG -- no --> UK[status = unknown]
 ```
 
 1. **ROI rectification** — 撹拌軸の上端線・下端線（4 点）を透視変換で 512 × 96 の帯に展開（1 行 ≒ 0.2%）。
@@ -53,21 +57,31 @@ flowchart LR
 3. **Tilt shear** — 事前校正した水線の傾きで帯をせん断し、各行が実際の水線 1 本に対応するようにする。
 4. **Optimal split** — 「上は露出・下は被覆」と最も矛盾の少ない行を求める。経験的しきい値を使わない。信頼度 = 下側被覆率 − 上側被覆率。
 5. **Temporal filter** — 信頼度 0.6 以上のフレームだけで 10 秒移動中央値。
-6. **below_rod / no_surface** — 撹拌軸上に液面がないとき、軸のすぐ下の領域が白飛びしていなければ「液面は軸より下（空タンクを含む）」、白飛びしていれば「判断不能」とする。
+6. **No-level decision** — 撹拌軸上に液面がないとき、原因を次の順に判定する（V1.6.4）。
+   - `submerged`：カメラが液中。軸の下半分がぼやけているが、どこも白飛びしていない
+   - `below_rod`：軸のすぐ下の領域が明瞭で、軸が全長露出している。液面は軸より下（空タンクを含む）
+   - `fog`：軸の下の領域と軸の上半分がともに白飛び（レンズの曇り）
+   - `unknown`：上記のいずれでもない
 
 詳細: [Method](docs/method.md)
 
 ## Results (one day, offline)
 
-![Liquid level per clip over one day](evidence/day-level-v1.6.2.png)
+![Liquid level and state per clip over one day](evidence/day-level-v1.6.4.png)
 
-*V1.6.2 の全日出力（553 クリップ）。濃い線 = クリップごとの中央値、薄い帯 = P10–P90、灰色の点 = 液面出力なし。*
+*V1.6.4 の全日出力（553 クリップ）。濃い線 = クリップごとの中央値、薄い帯 = P10–P90。0% の線の下の点は液面がないときの状態（青 = 液中、橙 = 撹拌軸より下、灰 = 曇り、赤 = 不明）。*
 
-- 液面ありと判定されたクリップ: 184 / 553（09:10〜17:13）。液面の範囲は 9.5〜47.8%
-- 液面ありのクリップの有効フレーム率: 中央値 0.91（P10 0.73）
-- クリップ内の P90−P10 の幅: 中央値 5.3 ポイント
+| State | Clips | Time |
+|---|---|---|
+| level | 184 | 09:10〜17:13（液面 9.5〜47.8%） |
+| below_rod | 194 | 00:13〜08:45（空タンク）、09:08 |
+| submerged | 169 | 17:16 以降（カメラが液中）。ほか 08:51 の 1 本は誤判定 |
+| fog | 5 | 08:53〜09:05（投入時のレンズ曇り） |
+| unknown | 1 | 08:48（撹拌開始・曇り始めの過渡期） |
 
-V1.6.2 では液面が撹拌軸より下にある時間も「出力なし」でした。V1.6.3 で `below_rod` を追加し、空タンク・排出後（撹拌軸が全長露出）と、レンズの曇りを区別できるようにしました。
+- 各クリップの静止画を目視で確認した状況との一致: **551 / 553**
+- 液面ありのクリップの有効フレーム率: 中央値 0.91（P10 0.73）。クリップ内の P90−P10 の幅: 中央値 5.3 ポイント
+- 液面の値は V1.6.2 から変わっていません（184 クリップで一致）
 
 詳細: [Evidence](docs/evidence.md)
 
@@ -85,17 +99,28 @@ V1.6.2 では液面が撹拌軸より下にある時間も「出力なし」で�
 - [ROI rectification](code-examples/roi_rectification.py)
 - [Boundary detection](code-examples/boundary_detection.py) — slurry probability, tilt shear, optimal split
 - [Tilt calibration](code-examples/tilt_calibration.py)
-- [Temporal filter & below_rod](code-examples/temporal_filter.py)
+- [Temporal filter & no-level decision](code-examples/temporal_filter.py)
 
 ツール全体（CLI・注釈動画・一括処理・ラベル付けツール）と、カメラ固有の ROI 設定は公開していません。
 
 ## Evidence included
 
+- [Day summary with states and visual check (V1.6.4, 553 clips)](evidence/day-summary-v1.6.4.csv)
 - [Day summary (V1.6.2, 553 clips)](evidence/day-summary-v1.6.2.csv)
 - [Per-frame output, level visible (V1.6.2)](evidence/frames-level-v1.6.2.csv)
 - [Per-frame output, below_rod case (V1.6.3)](evidence/frames-below-rod-v1.6.3.csv)
 
 映像・画像・カメラ設定は顧客現場のものであるため掲載していません。
+
+## Changelog
+
+| Version | Change |
+|---|---|
+| V1.6.4 | 液面がないときの判定を `submerged` → `below_rod` → `fog` → `unknown` の 4 段階に変更。V1.6.3 がカメラ液中の時間帯（夕方以降 168 クリップ）を `below_rod` と誤判定していた問題を修正。`no_surface` は `fog` と `unknown` に分割。液面の出力は変更なし |
+| V1.6.3 | `below_rod`（液面が撹拌軸より下）と `no_surface` を追加 |
+| V1.6.2 | 液面の % 出力（最適分割・傾き補正・時系列フィルタ） |
+
+詳細: [Engineering evolution](docs/engineering-evolution.md)
 
 ## Documents
 

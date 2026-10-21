@@ -1,6 +1,6 @@
 """Per-frame waterline: slurry probability, tilt shear and threshold-free optimal split.
 
-Excerpt from rod_level_v16.py (V1.6.3). Function bodies are copied verbatim from the source;
+Excerpt from rod_level_v16.py (V1.6.4). Function bodies are copied verbatim from the source;
 unrelated code (CLI, drawing, batch output) is omitted.
 """
 from __future__ import annotations
@@ -32,6 +32,14 @@ class Params:
     hold_seconds: float = 10.0  # keep the last level this long when evidence drops out
     probe_white: float = 235.0  # probe region median Lab L at/above this = washed out (fog) or slurry, not a clear view
     below_ratio: float = 0.7    # share of window frames that must show a clear, fully exposed rod for 'below_rod'
+    # camera under liquid: lower rod half blurred, but neither it nor the probe region is white
+    sub_grad_max: float = 9.5   # mean Lab-L gradient of the lower strip half below this = blurred (dry rod: 10-12)
+    sub_low_max: float = 225.0  # lower strip half median L below this = not covered by white slurry
+    sub_probe_max: float = 230.0  # probe median L below this = not fog
+    sub_ratio: float = 0.7      # share of window frames needed for 'submerged'
+    # fog: probe washed out and the upper rod half washed out too (exposed rod above slurry stays dark: L <= ~150)
+    fog_top_min: float = 158.0  # upper strip half median L at/above this = upper rod washed out
+    fog_ratio: float = 0.5      # share of window frames needed for 'fog'
 
 
 def slurry_probability(strip: np.ndarray, p: Params) -> np.ndarray:

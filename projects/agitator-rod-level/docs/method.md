@@ -64,25 +64,36 @@ confidence = mean(s[k:]) - mean(s[:k])
 - 有効フレームが窓の 30% 以上なら、その中央値を出力（`ok`）。窓内の IQR も出す
 - 途切れたら直前の値を最大 10 秒保持（`hold`）
 
-## 7. below_rod vs no_surface
+## 7. When there is no level: submerged / below_rod / fog / unknown
 
-撹拌軸上に液面がないとき、それが「液面が軸より下にある」のか「画面が見えない」のかを分けるため、**撹拌軸のすぐ下の領域（probe region）**を見ます。
+撹拌軸上に液面がないとき、その原因を次の 3 つの領域の見え方から判定します。
 
-- 既定の probe region: ROI の下半分（50%→0%）を、画面の下方向へ軸の幅の約 1.1 倍ずらした四角形
-- probe region の中央値明度 L < 235（曇りや白いスラリーで白飛びしていない）のフレームが 10 秒窓の 70% 以上 → `below_rod`
-- それ以外 → `no_surface`
+- 帯の**上半分**（100%→50%）と**下半分**（50%→0%）
+- **probe region**：ROI の下半分を、画面の下方向へ軸の幅の約 1.1 倍ずらした四角形（撹拌軸のすぐ下）
+
+フレームごとに条件を判定し、10 秒窓の中で条件を満たすフレームの割合が基準以上なら、その状態とします。上から順に判定します（V1.6.4）。
+
+| Order | Status | Per-frame condition | Share of window |
+|---|---|---|---|
+| 1 | `submerged` | 下半分がぼやけている（明度の平均勾配 < 9.5。乾いた軸は 10〜12）かつ 下半分が白くない（L < 225）かつ probe region が白くない（L < 230） | ≥ 70% |
+| 2 | `below_rod` | probe region の L < 235（視界が明瞭）かつ 1 に該当しない | ≥ 70% |
+| 3 | `fog` | probe region の L ≥ 235 かつ 上半分も白い（L ≥ 158。液面より上の露出した軸は L 約 120〜150） | ≥ 50% |
+| 4 | `unknown` | いずれにも該当しない | — |
+
+考え方：
+
+- **液中と空タンク**は、どちらも probe region が暗く、軸に白いスラリーが見えない。違いは**軸の下半分のシャープさ**（乾いていれば金具の輪郭がはっきり見え、液中ではぼやける）。
+- **曇りと白いスラリー**は、どちらも probe region が白い。違いは**軸の上半分**（曇りなら上半分も白飛びし、スラリーなら露出した軸が暗く見える）。
 
 ```mermaid
-stateDiagram-v2
-    [*] --> no_surface
-    no_surface --> ok: confident frames >= 30% of window
-    below_rod --> ok: confident frames >= 30% of window
-    ok --> hold: evidence drops
-    hold --> ok: evidence returns
-    hold --> below_rod: after 10 s, rod clearly exposed
-    hold --> no_surface: after 10 s, view unclear
-    no_surface --> below_rod: probe clear >= 70%
-    below_rod --> no_surface: probe washed out
+flowchart TD
+    A[No level for 10 s] --> S{lower half blurred<br/>and nothing white?}
+    S -- ">= 70%" --> SUB[submerged]
+    S -- no --> E{probe region clear?}
+    E -- ">= 70%" --> BR[below_rod]
+    E -- no --> F{probe and upper half<br/>washed out?}
+    F -- ">= 50%" --> FOG[fog]
+    F -- no --> UK[unknown]
 ```
 
 → [`temporal_filter.py`](../code-examples/temporal_filter.py)
@@ -90,6 +101,6 @@ stateDiagram-v2
 ## 8. Outputs
 
 - 注釈付き動画（ROI、単フレームの境界、フィルタ後の水線、probe region）
-- `level.csv`: 1 フレーム 1 行（`raw_level`, `frame_conf`, `level`, `status`, `iqr`, `probe_l`）
-- `summary.json`: クリップの中央値・P10・P90・状態
+- `level.csv`: 1 フレーム 1 行（`raw_level`, `frame_conf`, `level`, `status`, `iqr`, `probe_l`, `low_l`, `low_grad`, `top_l`）
+- `summary.json`: クリップの中央値・P10・P90・状態・各状態の割合
 - 一括処理時: `day_summary.csv` と日次グラフ
