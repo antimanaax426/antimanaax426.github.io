@@ -45,6 +45,9 @@ flowchart LR
     M --> OK[status = ok<br/>level %]
     H --> W{Lower rod blurred,<br/>nothing white?}
     W -- yes --> SM[status = submerged]
+    SM --> WT{Lower rod sharpness<br/>low_grad < 5.5 in half?}
+    WT -- yes --> TB[water = turbid]
+    WT -- no --> CL[water = clear]
     W -- no --> B{Probe region under rod<br/>clear?}
     B -- yes --> BR[status = below_rod<br/>level < 0 %]
     B -- no --> FG{Probe and upper rod<br/>washed out?}
@@ -58,7 +61,7 @@ flowchart LR
 4. **Optimal split** — 「上は露出・下は被覆」と最も矛盾の少ない行を求める。経験的しきい値を使わない。信頼度 = 下側被覆率 − 上側被覆率。
 5. **Temporal filter** — 信頼度 0.6 以上のフレームだけで 10 秒移動中央値。
 6. **No-level decision** — 撹拌軸上に液面がないとき、原因を次の順に判定する（V1.6.4）。
-   - `submerged`：カメラが液中。軸の下半分がぼやけているが、どこも白飛びしていない
+   - `submerged`：カメラが液中。軸の下半分がぼやけているが、どこも白飛びしていない。さらに軸のシャープさで、液が乳白（`turbid`）か透明（`clear`）かを出す（V1.6.5）
    - `below_rod`：軸のすぐ下の領域が明瞭で、軸が全長露出している。液面は軸より下（空タンクを含む）
    - `fog`：軸の下の領域と軸の上半分がともに白飛び（レンズの曇り）
    - `unknown`：上記のいずれでもない
@@ -83,6 +86,8 @@ flowchart LR
 - 液面ありのクリップの有効フレーム率: 中央値 0.91（P10 0.73）。クリップ内の P90−P10 の幅: 中央値 5.3 ポイント
 - 液面の値は V1.6.2 から変わっていません（184 クリップで一致）
 
+液中の乳白 / 透明（V1.6.5、17:08〜18:38 の 34 クリップ）：17:21〜17:42 は乳白、17:42 以降は透明と判定。薬品投入後に薄くなる過程は数値に出ているが、透明への切替は想定より約 54 分早く、激しい撹拌中（17:13〜17:21）には乳白が透明と判定されるフレームがある。
+
 詳細: [Evidence](docs/evidence.md)
 
 ## Technology
@@ -105,6 +110,7 @@ flowchart LR
 
 ## Evidence included
 
+- [Liquid type while submerged, 17:08–18:38 (V1.6.5, 34 clips)](evidence/submerged-water-v1.6.5.csv)
 - [Day summary with states and visual check (V1.6.4, 553 clips)](evidence/day-summary-v1.6.4.csv)
 - [Day summary (V1.6.2, 553 clips)](evidence/day-summary-v1.6.2.csv)
 - [Per-frame output, level visible (V1.6.2)](evidence/frames-level-v1.6.2.csv)
@@ -116,6 +122,7 @@ flowchart LR
 
 | Version | Change |
 |---|---|
+| V1.6.5 | `submerged` のときだけ、液が乳白（`turbid`）か透明（`clear`）かを軸の下半分のシャープさで追加判定し、`water` として出力。主状態は増やしていない。液面と他の状態の出力は変更なし |
 | V1.6.4 | 液面がないときの判定を `submerged` → `below_rod` → `fog` → `unknown` の 4 段階に変更。V1.6.3 がカメラ液中の時間帯（夕方以降 168 クリップ）を `below_rod` と誤判定していた問題を修正。`no_surface` は `fog` と `unknown` に分割。液面の出力は変更なし |
 | V1.6.3 | `below_rod`（液面が撹拌軸より下）と `no_surface` を追加 |
 | V1.6.2 | 液面の % 出力（最適分割・傾き補正・時系列フィルタ） |

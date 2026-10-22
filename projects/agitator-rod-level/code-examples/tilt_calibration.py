@@ -1,6 +1,6 @@
 """One-off calibration of the waterline tilt from frames with a clear surface.
 
-Excerpt from rod_level_v16.py (V1.6.4). Function bodies are copied verbatim from the source;
+Excerpt from rod_level_v16.py (V1.6.5). Function bodies are copied verbatim from the source;
 unrelated code (CLI, drawing, batch output) is omitted.
 """
 from __future__ import annotations

@@ -1,6 +1,7 @@
-"""Rolling-median filter, and the no-level decision (submerged / below_rod / fog / unknown).
+"""Rolling-median filter, the no-level decision (submerged / below_rod / fog / unknown),
+and the liquid type while submerged (turbid / clear).
 
-Excerpt from rod_level_v16.py (V1.6.4). Function bodies are copied verbatim from the source;
+Excerpt from rod_level_v16.py (V1.6.5). Function bodies are copied verbatim from the source;
 unrelated code (CLI, drawing, batch output) is omitted.
 """
 from __future__ import annotations
@@ -21,6 +22,9 @@ class LevelFilter:
       below_rod  - rod clearly visible and fully exposed: level under the ROI bottom, or empty tank
       fog        - view washed out by fog
       unknown    - none of the above
+
+    After 'submerged', self.water says which liquid: 'turbid' (milky / white) or 'clear'.
+    It is '' for every other status.
     """
 
     SITUATIONS = (('submerged', 'sub_ratio'), ('exposed', 'below_ratio'), ('fog', 'fog_ratio'))
@@ -32,6 +36,8 @@ class LevelFilter:
         self.hold = int(round(p.hold_seconds * fps))
         self.buf: deque = deque(maxlen=self.window)
         self.flags = {k: deque(maxlen=self.window) for k, _ in self.SITUATIONS}
+        self.turbid: deque = deque(maxlen=self.window)
+        self.water = ''
         self.last = None
         self.since_valid = 10 ** 9
 
@@ -43,6 +49,9 @@ class LevelFilter:
         self.buf.append(None if low else level)
         for k, dq in self.flags.items():
             dq.append(bool(flags.get(k, False)) and low)
+        # liquid type is only judged on frames that themselves look submerged
+        self.turbid.append(bool(flags.get('turbid', False)) if self.flags['submerged'][-1] else None)
+        self.water = ''
         valid = [v for v in self.buf if v is not None]
         need = max(3, int(np.ceil(self.window * self.p.min_valid_ratio)))
         if len(valid) >= need:
@@ -56,8 +65,16 @@ class LevelFilter:
         for k, ratio in self.SITUATIONS:
             dq = self.flags[k]
             if len(dq) >= 3 and sum(dq) >= getattr(self.p, ratio) * len(dq):
+                if k == 'submerged':
+                    self.water = self.water_type()
                 return None, self.STATUS[k], None
         return None, 'unknown', None
+
+
+    def water_type(self) -> str:
+        """Milky ('turbid') or transparent ('clear') liquid, from the submerged frames of the same window."""
+        sub = [t for t in self.turbid if t is not None]
+        return 'turbid' if sum(sub) >= self.p.turbid_ratio * len(sub) else 'clear'
 
 
 def view_features(frame: np.ndarray, roi: dict, probe: np.ndarray) -> dict:
@@ -79,6 +96,7 @@ def view_flags(v: dict, p: Params) -> dict:
     clear = bool(np.isfinite(pl))
     submerged = clear and v['low_grad'] < p.sub_grad_max and v['low_l'] < p.sub_low_max and pl < p.sub_probe_max
     return dict(submerged=submerged,
+                turbid=v['low_grad'] < p.turbid_grad_max,
                 exposed=clear and pl < p.probe_white and not submerged,
                 fog=clear and pl >= p.probe_white and v['top_l'] >= p.fog_top_min)
 

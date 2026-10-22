@@ -98,9 +98,24 @@ flowchart TD
 
 → [`temporal_filter.py`](../code-examples/temporal_filter.py)
 
+### 7.1 Liquid type while submerged: turbid / clear (V1.6.5)
+
+`submerged` と判定したときだけ、続けて液が**乳白（白く濁っている）**か**透明**かを判定し、`water` に出します。主状態は `submerged` のままで、状態の種類は増やしていません。
+
+| Parameter | Value | Meaning |
+|---|---|---|
+| `turbid_grad_max` | 5.5 | 帯の下半分の平均勾配（`low_grad`）がこれ未満のフレームは「乳白」 |
+| `turbid_ratio` | 0.5 | 10 秒窓のうち `submerged` の条件を満たすフレームだけを数え、その 50% 以上が乳白なら `turbid`、それ以外は `clear` |
+
+- 乳白の液では軸がぼやけて勾配が小さく（1 フレームあたりおおむね 3〜5）、透明な液では軸の輪郭や水滴がはっきり見えて大きい（おおむね 6〜8）。5.5 はその中間。
+- 明るさでは分けられない（乳白と透明で下半分の L はどちらも 209〜212）。
+- 液中の判定と同じ特徴（軸の下半分のシャープさ）を、もう一段細かいしきい値で使っている。
+
+→ [`temporal_filter.py`](../code-examples/temporal_filter.py)（`view_flags`、`LevelFilter.water_type`）
+
 ## 8. Outputs
 
 - 注釈付き動画（ROI、単フレームの境界、フィルタ後の水線、probe region）
-- `level.csv`: 1 フレーム 1 行（`raw_level`, `frame_conf`, `level`, `status`, `iqr`, `probe_l`, `low_l`, `low_grad`, `top_l`）
-- `summary.json`: クリップの中央値・P10・P90・状態・各状態の割合
+- `level.csv`: 1 フレーム 1 行（`raw_level`, `frame_conf`, `level`, `status`, `water`, `iqr`, `probe_l`, `low_l`, `low_grad`, `top_l`）
+- `summary.json`: クリップの中央値・P10・P90・状態・各状態の割合・液中の液の種類（`water`、`submerged_turbid_ratio`、`submerged_clear_ratio`）
 - 一括処理時: `day_summary.csv` と日次グラフ

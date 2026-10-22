@@ -55,7 +55,24 @@
 - V1.6.3 は 17:16 以降を「排出後で軸が露出」と扱っていたが、静止画の確認で液中と分かった（[Engineering evolution §5](engineering-evolution.md#5-v164--below_rod-was-wrong-for-the-whole-evening)）
 - `visual_check` はクリップの静止画を見て付けたもので、フレーム単位のラベルではありません
 
-## 4. What is not shown
+## 4. Liquid type while submerged (V1.6.5)
+
+[`../evidence/submerged-water-v1.6.5.csv`](../evidence/submerged-water-v1.6.5.csv) — 17:08〜18:38 の 34 クリップ。薬品の投入（17:12）後に乳白から透明へ変わり、18:36 に完全に透明になる、という想定で確認しました。
+
+![Lower-shaft sharpness and liquid type over time](../evidence/submerged-water-v1.6.5.png)
+
+| Time | Output | low_grad (clip median) | Visual check | Assessment |
+|---|---|---|---|---|
+| 17:08〜17:13 | level（約 34%） | 5.2〜5.4 | 液面あり | OK |
+| 17:13〜17:21 | `submerged`、`turbid` と `clear` が入れ替わる | 5.7〜6.3 | 乳白（激しい撹拌・しぶき） | **一部誤り**（1 クリップで 46% のフレームが `clear`） |
+| 17:21〜17:42 | `submerged` / `turbid` | 3.2 → 5.0 | 乳白、少しずつ薄くなる | OK |
+| 17:42〜18:38 | `submerged` / `clear` | 6.4 → 7.6〜7.9（17:48 以降ほぼ一定） | 透明 | 切替は想定より約 54 分早い |
+
+- 17:42 以降、翌日 00:44 までのクリップ（夜間の静止した透明な液を含む）でも、窓単位で `turbid` になることはなかった（V1.6.4 の 1 日分の出力からの試算）
+- `visual_check` はクリップの静止画を見て付けたもの。17:50〜18:36 の間に目で見て分かる変化があるかは未確認
+- 液面の値と、他の状態の判定は V1.6.4 から変わっていない
+
+## 5. What is not shown
 
 - ラベル付きの誤差（MAE など）— 評価ツールはあるが未実施
 - 複数カメラ・複数日での再現性

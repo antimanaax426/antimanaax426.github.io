@@ -1,6 +1,6 @@
 """Per-frame waterline: slurry probability, tilt shear and threshold-free optimal split.
 
-Excerpt from rod_level_v16.py (V1.6.4). Function bodies are copied verbatim from the source;
+Excerpt from rod_level_v16.py (V1.6.5). Function bodies are copied verbatim from the source;
 unrelated code (CLI, drawing, batch output) is omitted.
 """
 from __future__ import annotations
@@ -37,6 +37,9 @@ class Params:
     sub_low_max: float = 225.0  # lower strip half median L below this = not covered by white slurry
     sub_probe_max: float = 230.0  # probe median L below this = not fog
     sub_ratio: float = 0.7      # share of window frames needed for 'submerged'
+    # second check, only once 'submerged': milky liquid blurs the rod more than clear water
+    turbid_grad_max: float = 5.5  # lower strip half mean gradient below this = milky (2026-10-12: milky 3-5, clear 6-8)
+    turbid_ratio: float = 0.5     # share of the window's submerged frames needed for 'turbid', otherwise 'clear'
     # fog: probe washed out and the upper rod half washed out too (exposed rod above slurry stays dark: L <= ~150)
     fog_top_min: float = 158.0  # upper strip half median L at/above this = upper rod washed out
     fog_ratio: float = 0.5      # share of window frames needed for 'fog'
